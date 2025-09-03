@@ -195,10 +195,25 @@ if st.button("🎲 Generate My Questions"):
             st.code(content, language="markdown")
 
 # === Display Questions ===
+import copy
+
+# === After generating questions ===
 if st.session_state.qna and not st.session_state.submitted:
     elapsed = int(time.time() - st.session_state.start_time)
     m, s = divmod(elapsed, 60)
     st.info(f"⏱️ Timer: **{m}m {s}s**")
+
+    # Initialize fixed shuffled options if not already done
+    if "shuffled_options" not in st.session_state:
+        st.session_state.shuffled_options = []
+
+        for qa in st.session_state.qna:
+            if "options" in qa:  # MCQ type
+                shuffled = copy.deepcopy(qa["options"])
+                random.shuffle(shuffled)
+                st.session_state.shuffled_options.append(shuffled)
+            else:
+                st.session_state.shuffled_options.append(None)
 
     user_answers = []
     st.markdown("### ✍️ Answer the following:")
@@ -210,9 +225,7 @@ if st.session_state.qna and not st.session_state.submitted:
             ans = st.text_input(f"Answer for Q{i+1}", key=f"q{i}", label_visibility="collapsed")
             user_answers.append((qa['question'], qa['answer'], (ans or "").strip()))
         else:  # Multiple Choice
-            options = qa.get("options", [])
-            # Shuffle options each time
-            random.shuffle(options)
+            options = st.session_state.shuffled_options[i]  # fixed order
             labeled_options = [f"{chr(65+j)}. {opt}" for j, opt in enumerate(options)]
             ans = st.radio(
                 f"Select answer for Q{i+1}",
@@ -229,6 +242,7 @@ if st.session_state.qna and not st.session_state.submitted:
         st.session_state.user_answers = user_answers
         st.rerun()
 
+    # Timer auto-refresh
     time.sleep(1)
     st.rerun()
 
